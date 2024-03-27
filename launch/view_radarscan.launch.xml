@@ -1,0 +1,27 @@
+<launch>
+
+<!-- Run map launch, rviz-->
+<set_parameter name="use_sim_time" value="true"/>
+
+<group>
+    <push-ros-namespace namespace="/radar/front_center"/>
+    <node pkg="view_radarscan" exec="show_radar_scan" name="view_radar_scans" output="screen">
+        <remap from="radar_scan" to="/sensing/radar/front_center/scan_raw"/>
+    </node>
+</group>
+
+<group>
+    <push-ros-namespace namespace="/radar/front_left"/>
+    <node pkg="view_radarscan" exec="show_radar_scan" name="view_radar_scans" output="screen">
+        <remap from="radar_scan" to="/sensing/radar/front_left/scan_raw"/>
+    </node>
+</group>
+
+<group>
+    <push-ros-namespace namespace="/radar/front_right"/>
+    <node pkg="view_radarscan" exec="show_radar_scan" name="view_radar_scans" output="screen">
+        <remap from="radar_scan" to="/sensing/radar/front_right/scan_raw"/>
+    </node>
+</group>
+
+</launch>
