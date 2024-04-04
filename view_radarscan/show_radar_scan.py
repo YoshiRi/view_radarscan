@@ -9,7 +9,83 @@ import math
 
 QOS_PROFILE = QoSProfile(depth=10, reliability=ReliabilityPolicy.BEST_EFFORT)
 
+class RadarScanConverter:
+    def __init__(self, pointcloud_size, pointcloud_color, output_frame, height_filter, min_height, max_height):
+        self.pointcloud_size = pointcloud_size
+        self.pointcloud_color = pointcloud_color
+        self.output_frame = output_frame
+        self.height_filter = height_filter
+        self.min_height = min_height
+        self.max_height = max_height
 
+    def convert_scan_to_markers(self, msg):
+        marker_array = MarkerArray()
+        for i, target in enumerate(msg.returns):
+            x, y, z = self.calculate_xyz(target)
+            if self.should_filter_height(z):
+                continue
+            point_marker = self.create_point_marker(i, msg, x, y, z)
+            velocity_marker = self.create_velocity_marker(i, msg, target, x, y, z)
+            marker_array.markers.append(point_marker)
+            marker_array.markers.append(velocity_marker)
+        return marker_array
+
+    def calculate_xyz(self, target):
+        x = target.range * math.cos(target.azimuth)
+        y = target.range * math.sin(target.azimuth)
+        z = target.range * math.sin(target.elevation)
+        return x, y, z
+
+    def should_filter_height(self, z):
+        return self.height_filter and (z > self.max_height or z < self.min_height)
+
+    def create_point_marker(self, marker_id, msg, x, y, z):
+        marker = Marker()
+        marker.header.frame_id = self.output_frame if self.output_frame else msg.header.frame_id
+        marker.header.stamp = msg.header.stamp
+        marker.ns = "radar_targets"
+        marker.id = marker_id
+        marker.type = Marker.SPHERE
+        marker.action = Marker.ADD
+        marker.pose.position.x = x
+        marker.pose.position.y = y
+        marker.pose.position.z = z
+        marker.scale.x = marker.scale.y = marker.scale.z = self.pointcloud_size
+        marker.color.a = 1.0
+        marker.color.r = 1.0  # Example: Static color setting, can be based on amplitude
+        marker.color.g = 1.0
+        marker.color.b = 1.0
+        return marker
+    
+    def calc_color_from_intensity(self, intensity:float) -> tuple[float, float, float]:
+        # Example: Convert intensity to RGB color
+        r = 1.0 - intensity
+        g = 1.0
+        b = 1.0
+        return r, g, b
+
+    def create_velocity_marker(self, marker_id, msg, target, x, y, z):
+        azimuth = target.azimuth
+        speed = target.doppler_velocity
+        marker = Marker()
+        marker.header.frame_id = self.output_frame if self.output_frame else msg.header.frame_id
+        marker.header.stamp = msg.header.stamp
+        marker.ns = "radar_velocity"
+        marker.id = marker_id
+        marker.type = Marker.ARROW
+        marker.action = Marker.ADD
+        marker.pose.position.x = x
+        marker.pose.position.y = y
+        marker.pose.position.z = z
+        # marker.pose.orientation.z = math.sin(azimuth / 2)
+        # marker.pose.orientation.w = math.cos(azimuth / 2)
+        marker.scale.x = speed
+        marker.scale.y = marker.scale.z = 0.1
+        marker.color.a = 1.0
+        marker.color.r = 0.0
+        marker.color.g = 1.0
+        marker.color.b = 0.0
+        return marker
 
 class RadarScanVisualizer(Node):
     def __init__(self):
@@ -21,6 +97,12 @@ class RadarScanVisualizer(Node):
             QOS_PROFILE)
         self.marker_pub = self.create_publisher(MarkerArray, 'visualization_marker_array', 10)
         # ros params
+        self.load_parameters()
+        self.converter = RadarScanConverter(
+            self.pointcloud_size, self.pointcloud_color, self.output_frame,
+            self.height_filter, self.min_height, self.max_height)
+
+    def load_parameters(self):
         self.declare_parameter('pointcloud_size', 1.0)
         self.declare_parameter('pointcloud_color', 'intensity')
         self.declare_parameter('output_frame', '')
@@ -33,72 +115,11 @@ class RadarScanVisualizer(Node):
         self.height_filter = self.get_parameter('height_filter').value
         self.min_height = self.get_parameter('min_height').value
         self.max_height = self.get_parameter('max_height').value
-        self.get_logger().info("pointcloud size is " + str(self.pointcloud_size))
 
     def radar_scan_callback(self, msg):
-        marker_array = MarkerArray()
-        for i, target in enumerate(msg.returns):
-            # calculate xyz
-            x = target.range * math.cos(target.azimuth)  # Convert polar to Cartesian coordinates
-            y = target.range * math.sin(target.azimuth)
-            z = target.range * math.sin(target.elevation)  # Assuming radar targets are in 2D plane
-            if self.height_filter:
-                if z > self.max_height or z < self.min_height:
-                    continue
-
-            # Create point marker
-            point_marker = Marker()
-            point_marker.header.frame_id = self.output_frame if self.output_frame else msg.header.frame_id
-            point_marker.header.stamp = self.get_clock().now().to_msg()
-            point_marker.ns = "radar_targets"
-            point_marker.id = i
-            point_marker.type = Marker.SPHERE
-            point_marker.action = Marker.ADD
-            point_marker.pose.position.x = x
-            point_marker.pose.position.y = y
-            point_marker.pose.position.z = z  # Assuming radar targets are in 2D plane
-            point_marker.scale.x = self.pointcloud_size  # Adjust size as needed
-            point_marker.scale.y = self.pointcloud_size
-            point_marker.scale.z = self.pointcloud_size
-            point_marker.color.a = 1.0  # Don't forget to set the alpha!
-            point_marker.color.r = 1.0
-            point_marker.color.g = 0.0
-            point_marker.color.b = 0.0
-            
-            # Create velocity arrow marker
-            velocity_marker = Marker()
-            velocity_marker.header.frame_id = self.output_frame if self.output_frame else msg.header.frame_id
-            velocity_marker.header.stamp = self.get_clock().now().to_msg()
-            velocity_marker.ns = "radar_velocity"
-            velocity_marker.id = i
-            velocity_marker.type = Marker.ARROW
-            velocity_marker.action = Marker.ADD
-            velocity_marker.pose.position.x = x
-            velocity_marker.pose.position.y = y
-            velocity_marker.pose.position.z = z  # Assuming radar targets are in 2D plane
-            # quaternion from yaw angle
-            azimuth = target.azimuth
-            velocity_marker.pose.orientation.x = 0.0
-            velocity_marker.pose.orientation.y = 0.0
-            velocity_marker.pose.orientation.z = math.sin(azimuth / 2)
-            velocity_marker.pose.orientation.w = math.cos(azimuth / 2)
-            # The length of the arrow represents the speed
-            speed = target.doppler_velocity
-            velocity_marker.scale.x = speed  # Arrow length
-            velocity_marker.scale.y = 0.1  # Arrow width
-            velocity_marker.scale.z = 0.1  # Arrow height
-            # change intensity
-            amplitude = target.amplitude
-            # TODO: amplitude to rgb
-            velocity_marker.color.a = 1.0
-            velocity_marker.color.r = 0.0
-            velocity_marker.color.g = 1.0
-            velocity_marker.color.b = 0.0
-            
-            marker_array.markers.append(point_marker)
-            marker_array.markers.append(velocity_marker)
-
+        marker_array = self.converter.convert_scan_to_markers(msg)
         self.marker_pub.publish(marker_array)
+
 
 def main(args=None):
     rclpy.init(args=args)
