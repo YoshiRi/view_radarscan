@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+from rclpy.duration import Duration
 from radar_msgs.msg import RadarScan
 from visualization_msgs.msg import Marker, MarkerArray
 from geometry_msgs.msg import Point
@@ -45,7 +46,7 @@ class RadarScanConverter:
         marker.header.stamp = msg.header.stamp
         marker.ns = "radar_targets"
         marker.id = marker_id
-        marker.type = Marker.SPHERE
+        marker.type = Marker.CUBE
         marker.action = Marker.ADD
         marker.pose.position.x = x
         marker.pose.position.y = y
@@ -55,6 +56,7 @@ class RadarScanConverter:
         marker.color.r = 1.0  # Example: Static color setting, can be based on amplitude
         marker.color.g = 1.0
         marker.color.b = 1.0
+        marker.lifetime = Duration(seconds=10.0).to_msg()
         return marker
     
     def calc_color_from_intensity(self, intensity:float) -> tuple[float, float, float]:
@@ -77,14 +79,15 @@ class RadarScanConverter:
         marker.pose.position.x = x
         marker.pose.position.y = y
         marker.pose.position.z = z
-        # marker.pose.orientation.z = math.sin(azimuth / 2)
-        # marker.pose.orientation.w = math.cos(azimuth / 2)
+        marker.pose.orientation.z = math.sin(azimuth / 2)
+        marker.pose.orientation.w = math.cos(azimuth / 2)
         marker.scale.x = speed
         marker.scale.y = marker.scale.z = 0.1
         marker.color.a = 1.0
         marker.color.r = 0.0
         marker.color.g = 1.0
         marker.color.b = 0.0
+        marker.lifetime = Duration(seconds=10.0).to_msg()
         return marker
 
 class RadarScanVisualizer(Node):
