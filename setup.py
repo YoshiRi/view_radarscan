@@ -1,3 +1,8 @@
+# This is not used until you change package.xml to include the following:
+#   <export>
+#     <build_type>ament_python</build_type>
+#   </export>
+
 from setuptools import find_packages, setup
 from glob import glob
 import os
