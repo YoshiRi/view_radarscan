@@ -31,7 +31,7 @@
 <group>
     <push-ros-namespace namespace="/radar/rear_center"/>
     <node pkg="view_radarscan" exec="show_radar_scan.py" name="view_radar_scans" output="screen">
-        <remap from="radar_scan" to="/sensing/radar/front_right/scan_raw"/>
+        <remap from="radar_scan" to="/sensing/radar/rear_center/scan_raw"/>
         <param name="output_frame" value="rear_center/radar_link"/>
         <param name="height_filter" value="$(var use_height_filter)"/>
     </node>
