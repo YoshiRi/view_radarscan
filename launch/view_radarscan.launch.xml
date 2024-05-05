@@ -3,12 +3,14 @@
 <!-- Run map launch, rviz-->
 <set_parameter name="use_sim_time" value="true"/>
 <arg name="use_height_filter" default="false"/>
+<arg name="use_range_filter" default="false"/>
 
 <group>
     <push-ros-namespace namespace="/radar/front_center"/>
     <node pkg="view_radarscan" exec="show_radar_scan.py" name="view_radar_scans" output="screen">
         <remap from="radar_scan" to="/sensing/radar/front_center/scan_raw"/>
         <param name="height_filter" value="$(var use_height_filter)"/>
+        <param name="range_filter" value="$(var use_range_filter)"/>
     </node>
 </group>
 
@@ -17,6 +19,7 @@
     <node pkg="view_radarscan" exec="show_radar_scan.py" name="view_radar_scans" output="screen">
         <remap from="radar_scan" to="/sensing/radar/front_left/scan_raw"/>
         <param name="height_filter" value="$(var use_height_filter)"/>
+        <param name="range_filter" value="$(var use_range_filter)"/>
     </node>
 </group>
 
@@ -25,6 +28,7 @@
     <node pkg="view_radarscan" exec="show_radar_scan.py" name="view_radar_scans" output="screen">
         <remap from="radar_scan" to="/sensing/radar/front_right/scan_raw"/>
         <param name="height_filter" value="$(var use_height_filter)"/>
+        <param name="range_filter" value="$(var use_range_filter)"/>
     </node>
 </group>
 
@@ -34,6 +38,7 @@
         <remap from="radar_scan" to="/sensing/radar/rear_center/scan_raw"/>
         <param name="output_frame" value="rear_center/radar_link"/>
         <param name="height_filter" value="$(var use_height_filter)"/>
+        <param name="range_filter" value="$(var use_range_filter)"/>
     </node>
 </group>
 
@@ -43,6 +48,7 @@
         <remap from="radar_scan" to="/sensing/radar/rear_left/scan_raw"/>
         <param name="output_frame" value="rear_left/radar_link"/>
         <param name="height_filter" value="$(var use_height_filter)"/>
+        <param name="range_filter" value="$(var use_range_filter)"/>
     </node>
 </group>
 
@@ -53,6 +59,7 @@
         <remap from="radar_scan" to="/sensing/radar/rear_right/scan_raw"/>
         <param name="output_frame" value="rear_right/radar_link"/>
         <param name="height_filter" value="$(var use_height_filter)"/>
+        <param name="range_filter" value="$(var use_range_filter)"/>
     </node>
 </group>
 </launch>

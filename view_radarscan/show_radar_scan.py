@@ -202,21 +202,29 @@ class RadarScanVisualizer(Node):
         self.declare_parameter('output_frame', '')
         self.declare_parameter('max_height', 2.0)
         self.declare_parameter('min_height', -1.0)
+        self.declare_parameter('min_range', 80.0)
+        self.declare_parameter('max_range', 300.0)
         self.declare_parameter('height_filter', False)
+        self.declare_parameter('range_filter', False)
         self.declare_parameter('odom_cancel', True)
         self.pointcloud_size = self.get_parameter('pointcloud_size').value
         self.pointcloud_color = self.get_parameter('pointcloud_color').value
         self.output_frame = self.get_parameter('output_frame').value
         self.height_filter = self.get_parameter('height_filter').value
+        self.range_filter = self.get_parameter('range_filter').value
         self.min_height = self.get_parameter('min_height').value
         self.max_height = self.get_parameter('max_height').value
+        self.min_range = self.get_parameter('min_range').value
+        self.max_range = self.get_parameter('max_range').value
         self.odom_cancel = self.get_parameter('odom_cancel').value
 
     def radar_scan_callback(self, msg):
         self.sensor_frame = msg.header.frame_id
         marker_array = self.converter.convert_scan_to_markers(msg)
         if self.height_filter:
-            self.filter_by_height(marker_array)
+            marker_array = self.filter_by_height(marker_array)
+        if self.range_filter:
+            marker_array = self.filter_by_range(marker_array)
         if self.odom_cancel:
             try:
                 tf_baselink2sensor = self.tf_buffer.lookup_transform('base_link', self.sensor_frame, msg.header.stamp)
@@ -232,10 +240,23 @@ class RadarScanVisualizer(Node):
         self.odom_queue.append(msg)
 
     def filter_by_height(self, marker_array):
-        for i, marker in enumerate(marker_array.markers):
+        new_marker_array = MarkerArray()
+        for marker in marker_array.markers:
             z = marker.pose.position.z
             if z > self.max_height or z < self.min_height:
-                marker_array.markers.pop(i)        
+                continue
+            new_marker_array.markers.append(marker)
+        return new_marker_array
+
+    def filter_by_range(self, marker_array):
+        new_marker_array = MarkerArray()
+        for marker in marker_array.markers:
+            x = marker.pose.position.x
+            y = marker.pose.position.y
+            if math.sqrt(x**2 + y**2) < self.min_range or math.sqrt(x**2 + y**2) > self.max_range:
+                continue
+            new_marker_array.markers.append(marker)                
+        return new_marker_array
 
 def main(args=None):
     rclpy.init(args=args)
